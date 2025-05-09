@@ -1,7 +1,9 @@
 <template>
   <div class="w-screen h-screen flex flex-col justify-between bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 text-center p-8">
     <header class="pt-8">
-      <h1 class="text-5xl font-extrabold text-gray-800">DAOA <span class="text-xl font-medium text-gray-600">(Digital Assistant for Older Adults)</span></h1>
+      <h1 class="text-5xl font-extrabold text-gray-800">
+        DAOA <span class="text-xl font-medium text-gray-600">(Digital Assistant for Older Adults)</span>
+      </h1>
     </header>
 
     <main class="flex-grow flex items-center justify-center flex-col">
@@ -21,15 +23,27 @@
       <p class="mt-4 text-lg text-gray-700 italic px-4 max-w-xl mx-auto underline">{{ transcript }}</p>
     </footer>
   </div>
+
+  <ResponseModal
+    :isVisible="showModal"
+    :response="transcript"
+    @close="showModal = false"
+  />
 </template>
 
 <script>
+import ResponseModal from './components/ResponseModal.vue';
+
 export default {
+  components: {
+    ResponseModal
+  },
   data() {
     return {
       isListening: false,
       transcript: '',
-      recognition: null
+      recognition: null,
+      showModal: true,
     };
   },
   methods: {
@@ -46,7 +60,7 @@ export default {
     setupRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("Your browser does not support speech recognition.");
+        alert("Tu navegador no soporta reconocimiento de voz.");
         return;
       }
 
