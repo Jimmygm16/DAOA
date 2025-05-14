@@ -33,87 +33,103 @@
         <p class="text-gray-600 font-medium mb-2">Tu petición:</p>
         <p class="text-lg text-gray-800 italic underline break-words">{{ transcript }}</p>
       </footer>
+
+      <Loading :active="isLoading" :is-full-page="true" />
+      <AssistantModal :visible="showModal" @close="showModal = false" :textInput="modelResponse" />
     </div>
   </div>
 </template>
 
 
 
-<script>
-import requestModel from '../services/requestModel';
+<script setup>
+import { ref, onMounted } from 'vue'
+import requestModel from '../services/requestModel'
+import AssistantModal from './components/AssistantModal.vue'
+import Loading from 'vue-loading-overlay'
+import 'vue-loading-overlay/dist/css/index.css'
 
-export default {
-  data() {
-    return {
-      isListening: false,
-      transcript: '',
-      recognition: null
-    };
-  },
-  methods: {
-    toggleListening() {
-      if (!this.recognition) return;
+// estado reactivo
+const isListening = ref(false)
+const transcript = ref('')
+const recognition = ref(null)
+const showModal = ref(false)
+const isLoading = ref(false)
+const modelResponse = ref('')
 
-      this.isListening = !this.isListening;
+// funciones
+const toggleListening = () => {
+  if (!recognition.value) return
 
-      if (this.isListening) {
-        this.transcript = '';
-        this.recognition.start();
-      } else {
-        this.recognition.stop();
-      }
-    },
-    async sendData() {
-      if (this.transcript.trim() === '') {
-        console.log('No hay datos para enviar.');
-        return;
-      }
+  isListening.value = !isListening.value
 
-      try {
-        const response = await requestModel(this.transcript);
-        console.log('Respuesta del modelo:', response);
-      } catch (error) {
-        console.error('Error al enviar los datos:', error);
-      }
-    },
-    setupRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("Tu navegador no soporta reconocimiento de voz.");
-        return;
-      }
-
-      this.recognition = new SpeechRecognition();
-      this.recognition.lang = 'es-ES';
-      this.recognition.continuous = true;
-      this.recognition.interimResults = false;
-
-      this.recognition.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            this.transcript += ' ' + event.results[i][0].transcript;
-          }
-        }
-      };
-
-      this.recognition.onerror = (e) => {
-        console.error('Error de reconocimiento de voz:', e);
-      };
-
-      this.recognition.onend = () => {
-        if (this.isListening) {
-          this.recognition.start();
-        }
-      };
-    }
-  },
-  mounted() {
-    this.setupRecognition();
+  if (isListening.value) {
+    transcript.value = ''
+    recognition.value.start()
+  } else {
+    recognition.value.stop()
   }
-};
+}
+
+const sendData = async () => {
+  if (transcript.value.trim() === '') {
+    console.log('No hay datos para enviar.')
+    return
+  }
+
+  try {
+    isLoading.value = true
+    const response = await requestModel(transcript.value)
+
+    modelResponse.value = response || 'No se recibió respuesta del modelo.'
+
+    console.log('Respuesta del modelo:', response)
+  } catch (error) {
+    console.error('Error al enviar los datos:', error)
+    modelResponse.value = 'Lo siento, ocurrió un error al procesar tu solicitud.'
+  } finally {
+    isLoading.value = false
+    showModal.value = true
+  }
+}
+
+const setupRecognition = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    alert('Tu navegador no soporta reconocimiento de voz.')
+    return
+  }
+
+  recognition.value = new SpeechRecognition()
+  recognition.value.lang = 'es-ES'
+  recognition.value.continuous = true
+  recognition.value.interimResults = false
+
+  recognition.value.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        transcript.value += ' ' + event.results[i][0].transcript
+      }
+    }
+  }
+
+  recognition.value.onerror = (e) => {
+    console.error('Error de reconocimiento de voz:', e)
+  }
+
+  recognition.value.onend = () => {
+    if (isListening.value) {
+      recognition.value.start()
+    }
+  }
+}
+
+onMounted(() => {
+  setupRecognition()
+})
 </script>
 
-<style scoped>
+<style>
 body {
   margin: 0;
   overflow-x: hidden;
@@ -135,6 +151,11 @@ body {
   margin-right: 1rem;
 }
 
+.record-btn:hover {
+  cursor: pointer;
+  background-color: #45a049;
+}
+
 .send-data-btn {
   width: 16rem;
   height: 4rem;
@@ -147,6 +168,11 @@ body {
   font-size: 1.25rem;
   font-weight: bold;
   text-align: center;
+}
+
+.send-data-btn:hover {
+  cursor: pointer;
+  background-color: #a0a0a0;
 }
 
 .recording {
